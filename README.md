@@ -1,1 +1,0 @@
-# zerobase-technical-project
