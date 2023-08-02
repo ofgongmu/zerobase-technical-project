@@ -23,7 +23,7 @@ public class AccountDto {
                 .id(account.getId())
                 .email(account.getEmail())
                 .activated(account.isActivated())
-                .accountType(AccountType.OWNER)
+                .accountType(AccountType.ROLE_OWNER)
                 .build();
     }
 }

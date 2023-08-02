@@ -13,12 +13,17 @@ import com.example.storeproject.model.SignUpForm;
 import com.example.storeproject.repository.AccountRepository;
 import com.example.storeproject.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
-public class OwnerService {
+public class OwnerService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final AccountRepository accountRepository;
     private final StoreRepository storeRepository;
@@ -30,7 +35,7 @@ public class OwnerService {
                         Account.builder()
                                 .email(form.getEmail())
                                 .password(encodePassword(form.getPassword()))
-                                .accountType(AccountType.OWNER)
+                                .role(AccountType.ROLE_OWNER)
                                 .activated(true)
                                 .build())
                 );
@@ -46,14 +51,16 @@ public class OwnerService {
         return AccountDto.fromEntity(account);
     }
 
-    public StoreDto addStore(AddStoreForm form) {
+    public StoreDto addStore(Account account, AddStoreForm form) {
         checkNonAddedStore(form.getName(), form.getAddress());
+
         return StoreDto.fromEntity(
                 storeRepository.save(
                         Store.builder()
                                 .name(form.getName())
                                 .address(form.getAddress())
                                 .description(form.getDescription())
+                                .account(account)
                                 .build())
                 );
     }
@@ -64,7 +71,7 @@ public class OwnerService {
     }
 
     private String encodePassword(String password) {
-        if (password == null || password.equals("")) {
+        if (password == null || password.length() < 1) {
             throw new CustomException(ErrorCode.PASSWORD_CANNOT_BE_NULL);
         }
         return passwordEncoder.encode(password);
@@ -74,5 +81,11 @@ public class OwnerService {
         if (storeRepository.existsByNameAndAddress(name, address)) {
             throw new CustomException(ErrorCode.STORE_ALREADY_ADDED);
         }
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return this.accountRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_DOES_NOT_EXIST));
     }
 }

@@ -29,7 +29,7 @@ public class Store {
     private String description;
 
     @ManyToOne
-    @Column(nullable = false)
+    @JoinColumn(nullable = false)
     private Account account;
 
     @CreatedDate

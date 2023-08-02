@@ -1,5 +1,5 @@
 package com.example.storeproject.constants;
 
 public enum AccountType {
-    OWNER, USER
+    ROLE_OWNER, ROLE_USER;
 }
