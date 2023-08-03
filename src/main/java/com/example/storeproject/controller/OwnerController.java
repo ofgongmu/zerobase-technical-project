@@ -1,9 +1,9 @@
 package com.example.storeproject.controller;
 
-import com.example.storeproject.constants.AccountType;
 import com.example.storeproject.dto.AccountDto;
 import com.example.storeproject.entity.Account;
 import com.example.storeproject.model.AddStoreForm;
+import com.example.storeproject.model.EditStoreForm;
 import com.example.storeproject.model.SignInForm;
 import com.example.storeproject.model.SignUpForm;
 import com.example.storeproject.security.TokenProvider;
@@ -12,10 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -35,10 +32,28 @@ public class OwnerController {
         return ResponseEntity.ok(token);
     }
 
+    @DeleteMapping("/account/{id}")
+    public ResponseEntity<?> deleteOwnerAccount(@AuthenticationPrincipal Account account) {
+        ownerService.deleteOwnerAccount(account);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/store/add")
     @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<?> addStore(@AuthenticationPrincipal Account account, @RequestBody AddStoreForm form) {
         return ResponseEntity.ok(ownerService.addStore(account, form));
     }
 
+    @PutMapping("/store/{storeId}")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<?> editStoreInfo(@AuthenticationPrincipal Account account, @PathVariable Long storeId, @RequestBody EditStoreForm form) {
+        return ResponseEntity.ok(ownerService.editStoreInfo(account, storeId, form));
+    }
+
+    @DeleteMapping("/store/{storeId}")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<?> deleteStore(@AuthenticationPrincipal Account account, @PathVariable Long storeId) {
+        ownerService.deleteStore(account, storeId);
+        return ResponseEntity.ok().build();
+    }
 }

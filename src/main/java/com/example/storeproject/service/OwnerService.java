@@ -8,6 +8,7 @@ import com.example.storeproject.entity.Store;
 import com.example.storeproject.exception.CustomException;
 import com.example.storeproject.exception.ErrorCode;
 import com.example.storeproject.model.AddStoreForm;
+import com.example.storeproject.model.EditStoreForm;
 import com.example.storeproject.model.SignInForm;
 import com.example.storeproject.model.SignUpForm;
 import com.example.storeproject.repository.AccountRepository;
@@ -19,14 +20,18 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class OwnerService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final AccountRepository accountRepository;
     private final StoreRepository storeRepository;
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return this.accountRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_DOES_NOT_EXIST));
+    }
 
     public AccountDto signUp(SignUpForm form) {
         checkNonExistAccount(form.getEmail());
@@ -51,6 +56,11 @@ public class OwnerService implements UserDetailsService {
         return AccountDto.fromEntity(account);
     }
 
+    public void deleteOwnerAccount(Account account) {
+        checkIfStoresDeleted(account);
+        accountRepository.delete(account);
+    }
+
     public StoreDto addStore(Account account, AddStoreForm form) {
         checkNonAddedStore(form.getName(), form.getAddress());
 
@@ -64,6 +74,27 @@ public class OwnerService implements UserDetailsService {
                                 .build())
                 );
     }
+
+    public StoreDto editStoreInfo(Account account, Long storeId, EditStoreForm form) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
+        checkIfStoreOwner(account, store);
+
+        store.setName(form.getName());
+        store.setAddress(form.getAddress());
+        store.setDescription(form.getDescription());
+
+        return StoreDto.fromEntity(storeRepository.save(store));
+    }
+
+    public void deleteStore(Account account, Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
+        checkIfStoreOwner(account, store);
+        storeRepository.delete(store);
+    }
+
+
     private void checkNonExistAccount(String email) {
         if (accountRepository.existsByEmail(email)) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
@@ -77,15 +108,22 @@ public class OwnerService implements UserDetailsService {
         return passwordEncoder.encode(password);
     }
 
+    private void checkIfStoresDeleted(Account account) {
+        if (storeRepository.countByAccount(account) > 0) {
+            throw new CustomException(ErrorCode.REGISTERED_STORE_EXISTS);
+        }
+    }
+
     private void checkNonAddedStore(String name, String address) {
         if (storeRepository.existsByNameAndAddress(name, address)) {
             throw new CustomException(ErrorCode.STORE_ALREADY_ADDED);
         }
     }
 
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return this.accountRepository.findByEmail(email)
-                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_DOES_NOT_EXIST));
+    private void checkIfStoreOwner(Account account, Store store) {
+        if (store.getAccount().getId() != account.getId()) {
+            throw new CustomException(ErrorCode.STORE_OWNER_UNMATCH);
+        }
     }
+
 }

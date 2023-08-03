@@ -24,6 +24,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
                         .requestMatchers("/store/*").hasRole("OWNER")
                         .requestMatchers("/user/*").hasRole("USER")
+                        .requestMatchers("/account/*").authenticated()
                         .requestMatchers("/signup", "/signin").permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
