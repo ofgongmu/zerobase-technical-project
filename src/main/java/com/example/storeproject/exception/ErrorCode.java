@@ -23,7 +23,9 @@ public enum ErrorCode {
     RESERVATION_OWNER_UNMATCH("자신이 예약한 예약만을 확인할 수 있습니다."),
     RESERVATION_STORE_OWNER_UNMATCH("본인의 상점의 예약만 승인 혹은 거절할 수 있습니다."),
     UNACCEPTED_RESERVATION("승인되지 않은 예약입니다."),
-    LATE_ARRIVAL("예약 시간 10분 전까지 도착해야 합니다.");
+    LATE_ARRIVAL("예약 시간 10분 전까지 도착해야 합니다."),
+    UNVISITED_RESERVATION("방문 처리된 예약만 리뷰를 작성할 수 있습니다."),
+    STARS_MUST_BETWEEN_1_TO_5("별점은 1에서 5 사이의 값으로만 줄 수 있습니다.");
 
     private final String description;
 }

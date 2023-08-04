@@ -7,6 +7,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
@@ -31,6 +32,9 @@ public class Store {
     @ManyToOne
     @JoinColumn(nullable = false)
     private Account account;
+
+    @OneToMany
+    private List<Reservation> reservations;
 
     @CreatedDate
     private LocalDateTime addedAt;

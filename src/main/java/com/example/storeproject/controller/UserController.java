@@ -2,10 +2,7 @@ package com.example.storeproject.controller;
 
 import com.example.storeproject.dto.AccountDto;
 import com.example.storeproject.entity.Account;
-import com.example.storeproject.model.ReserveForm;
-import com.example.storeproject.model.SearchForm;
-import com.example.storeproject.model.SignInForm;
-import com.example.storeproject.model.SignUpForm;
+import com.example.storeproject.model.*;
 import com.example.storeproject.security.TokenProvider;
 import com.example.storeproject.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +40,21 @@ public class UserController {
         return ResponseEntity.ok(userService.searchStore(form));
     }
 
+    @GetMapping("/search/by-name/{page}")
+    public ResponseEntity<?> storeListByName(@PathVariable int page) {
+        return ResponseEntity.ok(userService.getStoreListByName(page));
+    }
+
+    @GetMapping("/search/by-stars/{page}")
+    public ResponseEntity<?> storeListByStars(@PathVariable int page) {
+        return ResponseEntity.ok(userService.getStoreListByStars(page));
+    }
+
+//    @GetMapping("/search/by-distance/{page}")
+//    public ResponseEntity<?> storeListByDistance(@PathVariable int page) {
+//        return ResponseEntity.ok(userService.getStoreListByDistance(page));
+//    }
+
 
     @PostMapping("/user/reserve/{storeId}")
     @PreAuthorize("hasRole('USER')")
@@ -59,8 +71,13 @@ public class UserController {
     @DeleteMapping("/user/reserve/{reservationId}")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> cancelReservation(@AuthenticationPrincipal Account account, @PathVariable long reservationId) {
-        userService.cancelReservation(account, reservationId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(userService.cancelReservation(account, reservationId));
+    }
+
+    @PutMapping("/user/reserve/{reservationId}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> writeReview(@AuthenticationPrincipal Account account, @PathVariable long reservationId, @RequestBody ReviewForm form) {
+        return ResponseEntity.ok(userService.writeReview(account, reservationId, form));
     }
 
 }

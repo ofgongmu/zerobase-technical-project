@@ -4,26 +4,26 @@ import com.example.storeproject.constants.AccountType;
 import com.example.storeproject.constants.ReservationState;
 import com.example.storeproject.dto.AccountDto;
 import com.example.storeproject.dto.ReservationDto;
+import com.example.storeproject.dto.ReviewDto;
 import com.example.storeproject.dto.StoreDto;
 import com.example.storeproject.entity.Account;
 import com.example.storeproject.entity.Reservation;
 import com.example.storeproject.entity.Store;
 import com.example.storeproject.exception.CustomException;
 import com.example.storeproject.exception.ErrorCode;
-import com.example.storeproject.model.ReserveForm;
-import com.example.storeproject.model.SearchForm;
-import com.example.storeproject.model.SignInForm;
-import com.example.storeproject.model.SignUpForm;
+import com.example.storeproject.model.*;
 import com.example.storeproject.repository.AccountRepository;
 import com.example.storeproject.repository.ReservationRepository;
 import com.example.storeproject.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -79,6 +79,21 @@ public class UserService implements UserDetailsService {
         return result.stream().map(StoreDto::fromEntity).collect(Collectors.toList());
     }
 
+    public Page<StoreDto> getStoreListByName(int page) {
+        Pageable pageable = PageRequest.of(page, 10);
+        List<StoreDto> result = new java.util.ArrayList<>(storeRepository.findAll().stream().map(StoreDto::fromEntity).toList());
+        result.sort(Comparator.comparing(StoreDto::getName));
+        return new PageImpl<>(result, pageable, result.size());
+    }
+
+
+    public Page<StoreDto> getStoreListByStars(int page) {
+        Pageable pageable = PageRequest.of(page, 10);
+        List<StoreDto> result = new java.util.ArrayList<>(storeRepository.findAll().stream().map(StoreDto::fromEntity).toList());
+        result.sort((x, y) -> y.getStars().compareTo(x.getStars()));
+        return new PageImpl<>(result, pageable, result.size());
+    }
+
     public ReservationDto reserveStore(Account account, long storeId, ReserveForm form) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
@@ -102,14 +117,28 @@ public class UserService implements UserDetailsService {
         return ReservationDto.fromEntity(reservation);
     }
 
-    public void cancelReservation(Account account, long reservationId) {
+    public ReservationDto cancelReservation(Account account, long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));
         checkReservationOwner(account, reservation);
 
         reservation.setReservationState(ReservationState.CANCELED);
-        reservationRepository.save(reservation);
+        return ReservationDto.fromEntity(reservationRepository.save(reservation));
     }
+
+    public ReviewDto writeReview(Account account, long reservationId, ReviewForm form) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));
+
+        checkReservationOwner(account, reservation);
+        checkIfVisited(reservation);
+        checkStarsInRange(form.getStars());
+
+        reservation.setStars(form.getStars());
+        reservation.setReview(form.getReview());
+        return ReviewDto.fromEntity(reservationRepository.save(reservation));
+    }
+
 
 
     private void checkNonExistAccount(String email) {
@@ -142,5 +171,18 @@ public class UserService implements UserDetailsService {
             throw new CustomException(ErrorCode.ACCOUNT_RESERVATION_EXISTS);
         }
     }
+
+    private void checkIfVisited(Reservation reservation) {
+        if (!reservation.isVisitedYn()) {
+            throw new CustomException(ErrorCode.UNVISITED_RESERVATION);
+        }
+    }
+
+    private void checkStarsInRange(int stars) {
+        if (stars < 1 || stars > 5) {
+            throw new CustomException(ErrorCode.STARS_MUST_BETWEEN_1_TO_5);
+        }
+    }
+
 
 }
