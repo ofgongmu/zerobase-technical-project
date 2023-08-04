@@ -50,6 +50,7 @@ public class UserService implements UserDetailsService {
                                 .email(form.getEmail())
                                 .password(encodePassword(form.getPassword()))
                                 .role(AccountType.ROLE_USER)
+                                .activated(true)
                                 .build())
                 );
     }
@@ -61,16 +62,20 @@ public class UserService implements UserDetailsService {
         if (!passwordEncoder.matches(form.getPassword(), account.getPassword())) {
             throw new CustomException(ErrorCode.PASSWORD_IS_INCORRECT);
         }
+        if (!account.isActivated()) {
+            throw new CustomException(ErrorCode.UNACTIVATED_ACCOUNT);
+        }
         return AccountDto.fromEntity(account);
     }
 
     public void deleteUserAccount(Account account) {
-        // 예약 없는지 확인
-        accountRepository.delete(account);
+        checkIfReservationExists(account);
+        account.setActivated(false);
+        accountRepository.save(account);
     }
 
     public List<StoreDto> searchStore(SearchForm form) {
-        List<Store> result = storeRepository.findByNameContainingIgnoreCaseOrAddressContainingIgnoreCaseOrDescriptionContainingIgnoreCase(form.getKeyword());
+        List<Store> result = storeRepository.findByNameContainingIgnoreCaseOrAddressContainingIgnoreCaseOrDescriptionContainingIgnoreCase(form.getKeyword(), form.getKeyword(), form.getKeyword());
         return result.stream().map(StoreDto::fromEntity).collect(Collectors.toList());
     }
 
@@ -129,6 +134,12 @@ public class UserService implements UserDetailsService {
     private void checkReservationOwner(Account account, Reservation reservation) {
         if (account.getId() != reservation.getAccount().getId()) {
             throw new CustomException(ErrorCode.RESERVATION_OWNER_UNMATCH);
+        }
+    }
+
+    private void checkIfReservationExists(Account account) {
+        if (reservationRepository.countByAccount(account) > 0)  {
+            throw new CustomException(ErrorCode.ACCOUNT_RESERVATION_EXISTS);
         }
     }
 

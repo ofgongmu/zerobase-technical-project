@@ -12,5 +12,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     boolean existsByNameAndAddress(String name, String address);
     long countByAccount(Account account);
 
-    List<Store> findByNameContainingIgnoreCaseOrAddressContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String keyword);
+    List<Store> findByNameContainingIgnoreCaseOrAddressContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String keyword1, String keyword2, String keyword3);
+
+    List<Store> findByAccount(Account account);
 }

@@ -1,5 +1,6 @@
 package com.example.storeproject.controller;
 
+import com.example.storeproject.constants.ReservationState;
 import com.example.storeproject.dto.AccountDto;
 import com.example.storeproject.entity.Account;
 import com.example.storeproject.model.AddStoreForm;
@@ -55,5 +56,18 @@ public class OwnerController {
     public ResponseEntity<?> deleteStore(@AuthenticationPrincipal Account account, @PathVariable Long storeId) {
         ownerService.deleteStore(account, storeId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/store/reservation")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<?> checkReservations(@AuthenticationPrincipal Account account) {
+        return ResponseEntity.ok(ownerService.getReservations(account));
+    }
+
+    @PutMapping("/store/reservation/{reservationId}")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<?> confirmReservation(@AuthenticationPrincipal Account account, @PathVariable Long reservationId, @RequestBody ReservationState state) {
+        return ResponseEntity.ok(ownerService.confirmReservation(account, reservationId, state));
+
     }
 }

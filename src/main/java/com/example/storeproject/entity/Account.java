@@ -35,6 +35,9 @@ public class Account implements UserDetails {
     @Column(nullable = false)
     private AccountType role;
 
+    @Column(nullable = false)
+    private boolean activated;
+
     @CreatedDate
     LocalDateTime registeredAt;
 
