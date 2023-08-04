@@ -1,17 +1,21 @@
 package com.example.storeproject.service;
 
 import com.example.storeproject.constants.AccountType;
+import com.example.storeproject.constants.ReservationState;
 import com.example.storeproject.dto.AccountDto;
+import com.example.storeproject.dto.ReservationDto;
 import com.example.storeproject.dto.StoreDto;
 import com.example.storeproject.entity.Account;
+import com.example.storeproject.entity.Reservation;
 import com.example.storeproject.entity.Store;
 import com.example.storeproject.exception.CustomException;
 import com.example.storeproject.exception.ErrorCode;
-import com.example.storeproject.model.AddStoreForm;
-import com.example.storeproject.model.EditStoreForm;
+import com.example.storeproject.model.ReserveForm;
+import com.example.storeproject.model.SearchForm;
 import com.example.storeproject.model.SignInForm;
 import com.example.storeproject.model.SignUpForm;
 import com.example.storeproject.repository.AccountRepository;
+import com.example.storeproject.repository.ReservationRepository;
 import com.example.storeproject.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,12 +24,17 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
-public class OwnerService implements UserDetailsService {
+public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final AccountRepository accountRepository;
     private final StoreRepository storeRepository;
+    private final ReservationRepository reservationRepository;
+
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -40,7 +49,7 @@ public class OwnerService implements UserDetailsService {
                         Account.builder()
                                 .email(form.getEmail())
                                 .password(encodePassword(form.getPassword()))
-                                .role(AccountType.ROLE_OWNER)
+                                .role(AccountType.ROLE_USER)
                                 .build())
                 );
     }
@@ -55,42 +64,46 @@ public class OwnerService implements UserDetailsService {
         return AccountDto.fromEntity(account);
     }
 
-    public void deleteOwnerAccount(Account account) {
-        checkIfStoresDeleted(account);
+    public void deleteUserAccount(Account account) {
+        // 예약 없는지 확인
         accountRepository.delete(account);
     }
 
-    public StoreDto addStore(Account account, AddStoreForm form) {
-        checkNonAddedStore(form.getName(), form.getAddress());
+    public List<StoreDto> searchStore(SearchForm form) {
+        List<Store> result = storeRepository.findByNameContainingIgnoreCaseOrAddressContainingIgnoreCaseOrDescriptionContainingIgnoreCase(form.getKeyword());
+        return result.stream().map(StoreDto::fromEntity).collect(Collectors.toList());
+    }
 
-        return StoreDto.fromEntity(
-                storeRepository.save(
-                        Store.builder()
-                                .name(form.getName())
-                                .address(form.getAddress())
-                                .description(form.getDescription())
+    public ReservationDto reserveStore(Account account, long storeId, ReserveForm form) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
+        checkNonDuplicatedReserve(account, store, form);
+
+        return ReservationDto.fromEntity(
+                reservationRepository.save(
+                        Reservation.builder()
+                                .store(store)
                                 .account(account)
-                                .build())
-                );
+                                .reserveDateTime(form.getReserveDateTime())
+                                .userContact(form.getUserContact())
+                                .reservationState(ReservationState.PENDING)
+                                .build()));
     }
 
-    public StoreDto editStoreInfo(Account account, Long storeId, EditStoreForm form) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
-        checkIfStoreOwner(account, store);
-
-        store.setName(form.getName());
-        store.setAddress(form.getAddress());
-        store.setDescription(form.getDescription());
-
-        return StoreDto.fromEntity(storeRepository.save(store));
+    public ReservationDto seeReservation(Account account, long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));
+        checkReservationOwner(account, reservation);
+        return ReservationDto.fromEntity(reservation);
     }
 
-    public void deleteStore(Account account, Long storeId) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
-        checkIfStoreOwner(account, store);
-        storeRepository.delete(store);
+    public void cancelReservation(Account account, long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));
+        checkReservationOwner(account, reservation);
+
+        reservation.setReservationState(ReservationState.CANCELED);
+        reservationRepository.save(reservation);
     }
 
 
@@ -107,21 +120,15 @@ public class OwnerService implements UserDetailsService {
         return passwordEncoder.encode(password);
     }
 
-    private void checkIfStoresDeleted(Account account) {
-        if (storeRepository.countByAccount(account) > 0) {
-            throw new CustomException(ErrorCode.REGISTERED_STORE_EXISTS);
+    private void checkNonDuplicatedReserve(Account account, Store store, ReserveForm form) {
+        if (reservationRepository.countByAccountAndStoreAndRAndReserveDateTime(account, store, form.getReserveDateTime()) > 0) {
+            throw new CustomException(ErrorCode.DUPLICATED_RESERVATION);
         }
     }
 
-    private void checkNonAddedStore(String name, String address) {
-        if (storeRepository.existsByNameAndAddress(name, address)) {
-            throw new CustomException(ErrorCode.STORE_ALREADY_ADDED);
-        }
-    }
-
-    private void checkIfStoreOwner(Account account, Store store) {
-        if (store.getAccount().getId() != account.getId()) {
-            throw new CustomException(ErrorCode.STORE_OWNER_UNMATCH);
+    private void checkReservationOwner(Account account, Reservation reservation) {
+        if (account.getId() != reservation.getAccount().getId()) {
+            throw new CustomException(ErrorCode.RESERVATION_OWNER_UNMATCH);
         }
     }
 

@@ -23,9 +23,9 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
                         .requestMatchers("/store/*").hasRole("OWNER")
-                        .requestMatchers("/user/*").hasRole("USER")
+                        .requestMatchers("/user/*", "/user/reserve/*").hasRole("USER")
                         .requestMatchers("/account/*").authenticated()
-                        .requestMatchers("/signup", "/signin").permitAll())
+                        .requestMatchers("/signup", "/signin", "/search", "/kiosk/*").permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

@@ -14,7 +14,13 @@ public enum ErrorCode {
     STORE_ALREADY_ADDED("이미 등록된 가게입니다."),
     STORE_DOES_NOT_EXIST("존재하지 않는 상점입니다."),
     STORE_OWNER_UNMATCH("상점의 점주만 상점 정보를 수정할 수 있습니다."),
-    REGISTERED_STORE_EXISTS("해당 계정으로 등록된 상점이 존재합니다.");
+    REGISTERED_STORE_EXISTS("해당 계정으로 등록된 상점이 존재합니다."),
+
+    DUPLICATED_RESERVATION("같은 날짜와 시간의 예약이 이미 존재합니다."),
+    RESERVATION_DOES_NOT_EXIST("존재하지 않는 예약입니다."),
+    RESERVATION_OWNER_UNMATCH("자신이 예약한 예약만을 확인할 수 있습니다."),
+    UNACCEPTED_RESERVATION("승인되지 않은 예약입니다."),
+    LATE_ARRIVAL("예약 시간 10분 전까지 도착해야 합니다.");
 
     private final String description;
 }

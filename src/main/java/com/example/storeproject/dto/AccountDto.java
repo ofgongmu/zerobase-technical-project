@@ -14,15 +14,12 @@ public class AccountDto {
 
     private String email;
 
-    private boolean activated;
-
     private AccountType accountType;
 
     public static AccountDto fromEntity(Account account) {
         return AccountDto.builder()
                 .id(account.getId())
                 .email(account.getEmail())
-                .activated(account.isActivated())
                 .accountType(AccountType.ROLE_OWNER)
                 .build();
     }
