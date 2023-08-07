@@ -25,6 +25,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
@@ -47,6 +48,7 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 회원 가입
+    @Transactional
     public AccountDto signUp(SignUpForm form) {
         checkNonExistAccount(form.getEmail());
         logger.trace("USER SIGNUP: {}", form.getEmail());
@@ -62,6 +64,7 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 로그인
+    @Transactional
     public AccountDto signIn(SignInForm form) {
         Account account = accountRepository.findByEmail(form.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_DOES_NOT_EXIST));
@@ -77,6 +80,7 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 계정 탈퇴
+    @Transactional
     public void deleteUserAccount(Account account) {
         checkIfReservationExists(account);
         account.setActivated(false);
@@ -85,12 +89,14 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 상점 검색
+    @Transactional(readOnly = true)
     public List<StoreDto> searchStore(SearchForm form) {
         List<Store> result = storeRepository.findByNameContainingIgnoreCaseOrAddressContainingIgnoreCaseOrDescriptionContainingIgnoreCase(form.getKeyword(), form.getKeyword(), form.getKeyword());
         return result.stream().map(StoreDto::fromEntity).collect(Collectors.toList());
     }
 
     // 사용자 이름순 상점 조회
+    @Transactional(readOnly = true)
     public Page<StoreDto> getStoreListByName(int page) {
         Pageable pageable = PageRequest.of(page, 10);
         List<StoreDto> result = new java.util.ArrayList<>(storeRepository.findAll().stream().map(StoreDto::fromEntity).toList());
@@ -99,6 +105,7 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 별점순 상점 조회
+    @Transactional(readOnly = true)
     public Page<StoreDto> getStoreListByStars(int page) {
         Pageable pageable = PageRequest.of(page, 10);
         List<StoreDto> result = new java.util.ArrayList<>(storeRepository.findAll().stream().map(StoreDto::fromEntity).toList());
@@ -107,6 +114,7 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 상점 예약
+    @Transactional
     public ReservationDto reserveStore(Account account, long storeId, ReserveForm form) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
@@ -125,6 +133,7 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 예약 조회
+    @Transactional(readOnly = true)
     public ReservationDto seeReservation(Account account, long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));
@@ -133,6 +142,7 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 예약 취소
+    @Transactional
     public ReservationDto cancelReservation(Account account, long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));
@@ -144,6 +154,7 @@ public class UserService implements UserDetailsService {
     }
 
     // 사용자 리뷰 작성 및 수정
+    @Transactional
     public ReviewDto writeReview(Account account, long reservationId, ReviewForm form) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));

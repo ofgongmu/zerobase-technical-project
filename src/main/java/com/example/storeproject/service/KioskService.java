@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -26,6 +27,7 @@ public class KioskService {
     private static final Logger logger = LoggerFactory.getLogger(StoreProjectApplication.class);
 
     // 방문 확인
+    @Transactional
     public ArrivalDto confirmArrival(ArrivalForm form) {
         Store store = storeRepository.findById(form.getStoreId())
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));

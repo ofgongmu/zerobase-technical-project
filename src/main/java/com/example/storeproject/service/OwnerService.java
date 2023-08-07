@@ -26,6 +26,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,6 +48,7 @@ public class OwnerService implements UserDetailsService {
     }
 
     // 점주 회원 가입
+    @Transactional
     public AccountDto signUp(SignUpForm form) {
         checkNonExistAccount(form.getEmail());
         logger.trace("OWNER SIGNUP: {}", form.getEmail());
@@ -63,6 +65,7 @@ public class OwnerService implements UserDetailsService {
     }
 
     // 점주 로그인
+    @Transactional
     public AccountDto signIn(SignInForm form) {
         Account account = accountRepository.findByEmail(form.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_DOES_NOT_EXIST));
@@ -79,6 +82,7 @@ public class OwnerService implements UserDetailsService {
     }
 
     // 점주 계정 탈퇴
+    @Transactional
     public void deleteOwnerAccount(Account account) {
         checkIfStoresDeleted(account);
         account.setActivated(false);
@@ -88,6 +92,7 @@ public class OwnerService implements UserDetailsService {
     }
 
     // 점주 상점 추가
+    @Transactional
     public StoreDto addStore(Account account, AddStoreForm form) {
         checkNonAddedStore(form.getName(), form.getAddress());
 
@@ -106,6 +111,7 @@ public class OwnerService implements UserDetailsService {
 
 
     // 점주 상점 정보 수정
+    @Transactional
     public StoreDto editStoreInfo(Account account, Long storeId, EditStoreForm form) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
@@ -121,6 +127,7 @@ public class OwnerService implements UserDetailsService {
     }
 
     // 점주 상점 삭제
+    @Transactional
     public void deleteStore(Account account, Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
@@ -133,6 +140,7 @@ public class OwnerService implements UserDetailsService {
 
 
     // 점주 예약 목록 확인
+    @Transactional(readOnly = true)
     public List<ReservationDto> getReservations(Account account) {
         List<Store> stores = storeRepository.findByAccount(account);
         return stores.stream().flatMap(store -> reservationRepository.findByStoreOrderByStoreDescReserveDateTimeDesc(store).stream())
@@ -140,16 +148,19 @@ public class OwnerService implements UserDetailsService {
     }
 
     // 점주 예약 확정 및 거절
+    @Transactional
     public ReservationDto confirmReservation(Account account, Long reservationId, ReservationState state) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));
         checkIfReservationStoreOwner(account, reservation);
+        checkIfNotCanceled(reservation);
         reservation.setReservationState(state);
 
         logger.trace("OWNER {} CHANGED RESERVATION {} {} STATE TO {}", account.getEmail(), reservation.getStore().getName(), reservation.getReserveDateTime(), state);
 
         return ReservationDto.fromEntity(reservationRepository.save(reservation));
     }
+
 
 
     // 이미 가입한 적 있는 이메일인지 확인
@@ -192,6 +203,13 @@ public class OwnerService implements UserDetailsService {
     private void checkIfReservationStoreOwner(Account account, Reservation reservation) {
         if (reservation.getStore().getAccount().getId() != account.getId()) {
             throw new CustomException(ErrorCode.RESERVATION_STORE_OWNER_UNMATCH);
+        }
+    }
+
+    // 취소된 예약인지 확인
+    private void checkIfNotCanceled(Reservation reservation) {
+        if (reservation.getReservationState() == ReservationState.CANCELED) {
+            throw new CustomException(ErrorCode.RESERVATION_CANCELED);
         }
     }
 
