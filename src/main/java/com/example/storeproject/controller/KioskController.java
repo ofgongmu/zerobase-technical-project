@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class KioskController {
     private final KioskService kioskService;
 
+    // 방문 확인
     @PutMapping("/kiosk/arrival")
     public ResponseEntity<?> confirmArrival(@RequestBody ArrivalForm form) {
         return ResponseEntity.ok(kioskService.confirmArrival(form));

@@ -1,5 +1,6 @@
 package com.example.storeproject.service;
 
+import com.example.storeproject.StoreProjectApplication;
 import com.example.storeproject.constants.AccountType;
 import com.example.storeproject.constants.ReservationState;
 import com.example.storeproject.dto.AccountDto;
@@ -18,6 +19,8 @@ import com.example.storeproject.repository.AccountRepository;
 import com.example.storeproject.repository.ReservationRepository;
 import com.example.storeproject.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -34,6 +37,8 @@ public class OwnerService implements UserDetailsService {
     private final AccountRepository accountRepository;
     private final StoreRepository storeRepository;
     private final ReservationRepository reservationRepository;
+    private static final Logger logger = LoggerFactory.getLogger(StoreProjectApplication.class);
+
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -41,8 +46,11 @@ public class OwnerService implements UserDetailsService {
                 .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_DOES_NOT_EXIST));
     }
 
+    // 점주 회원 가입
     public AccountDto signUp(SignUpForm form) {
         checkNonExistAccount(form.getEmail());
+        logger.trace("OWNER SIGNUP: {}", form.getEmail());
+
         return AccountDto.fromEntity(
                 accountRepository.save(
                         Account.builder()
@@ -54,6 +62,7 @@ public class OwnerService implements UserDetailsService {
                 );
     }
 
+    // 점주 로그인
     public AccountDto signIn(SignInForm form) {
         Account account = accountRepository.findByEmail(form.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_DOES_NOT_EXIST));
@@ -64,17 +73,25 @@ public class OwnerService implements UserDetailsService {
         if (!account.isActivated()) {
             throw new CustomException(ErrorCode.UNACTIVATED_ACCOUNT);
         }
+        logger.trace("OWNER SIGNIN: {}", form.getEmail());
+
         return AccountDto.fromEntity(account);
     }
 
+    // 점주 계정 탈퇴
     public void deleteOwnerAccount(Account account) {
         checkIfStoresDeleted(account);
         account.setActivated(false);
+        logger.trace("OWNER WITHDRAW: {}", account.getEmail());
+
         accountRepository.save(account);
     }
 
+    // 점주 상점 추가
     public StoreDto addStore(Account account, AddStoreForm form) {
         checkNonAddedStore(form.getName(), form.getAddress());
+
+        logger.trace("OWNER {} ADDED STORE {}", account.getEmail(), form.getName());
 
         return StoreDto.fromEntity(
                 storeRepository.save(
@@ -87,6 +104,8 @@ public class OwnerService implements UserDetailsService {
                 );
     }
 
+
+    // 점주 상점 정보 수정
     public StoreDto editStoreInfo(Account account, Long storeId, EditStoreForm form) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
@@ -96,38 +115,51 @@ public class OwnerService implements UserDetailsService {
         store.setAddress(form.getAddress());
         store.setDescription(form.getDescription());
 
+        logger.trace("OWNER {} EDITED STORE {}", account.getEmail(), form.getName());
+
         return StoreDto.fromEntity(storeRepository.save(store));
     }
 
+    // 점주 상점 삭제
     public void deleteStore(Account account, Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.STORE_DOES_NOT_EXIST));
         checkIfStoreOwner(account, store);
+
+        logger.trace("OWNER {} DELETED STORE {}", account.getEmail(), store.getName());
+
         storeRepository.delete(store);
     }
 
 
+    // 점주 예약 목록 확인
     public List<ReservationDto> getReservations(Account account) {
         List<Store> stores = storeRepository.findByAccount(account);
         return stores.stream().flatMap(store -> reservationRepository.findByStoreOrderByStoreDescReserveDateTimeDesc(store).stream())
                 .map(ReservationDto::fromEntity).collect(Collectors.toList());
     }
 
+    // 점주 예약 확정 및 거절
     public ReservationDto confirmReservation(Account account, Long reservationId, ReservationState state) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_DOES_NOT_EXIST));
         checkIfReservationStoreOwner(account, reservation);
         reservation.setReservationState(state);
+
+        logger.trace("OWNER {} CHANGED RESERVATION {} {} STATE TO {}", account.getEmail(), reservation.getStore().getName(), reservation.getReserveDateTime(), state);
+
         return ReservationDto.fromEntity(reservationRepository.save(reservation));
     }
 
 
+    // 이미 가입한 적 있는 이메일인지 확인
     private void checkNonExistAccount(String email) {
         if (accountRepository.existsByEmail(email)) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
         }
     }
 
+    // 비밀번호 암호화
     private String encodePassword(String password) {
         if (password == null || password.length() < 1) {
             throw new CustomException(ErrorCode.PASSWORD_CANNOT_BE_NULL);
@@ -135,24 +167,28 @@ public class OwnerService implements UserDetailsService {
         return passwordEncoder.encode(password);
     }
 
+    // 계정 삭제 전 해당 계정으로 등록된 상점 존재하는지 확인
     private void checkIfStoresDeleted(Account account) {
         if (storeRepository.countByAccount(account) > 0) {
             throw new CustomException(ErrorCode.REGISTERED_STORE_EXISTS);
         }
     }
 
+    // 이미 추가된 상점인지 확인
     private void checkNonAddedStore(String name, String address) {
         if (storeRepository.existsByNameAndAddress(name, address)) {
             throw new CustomException(ErrorCode.STORE_ALREADY_ADDED);
         }
     }
 
+    // 로그인된 계정과 상점 주인이 동일한지 확인
     private void checkIfStoreOwner(Account account, Store store) {
         if (store.getAccount().getId() != account.getId()) {
             throw new CustomException(ErrorCode.STORE_OWNER_UNMATCH);
         }
     }
 
+    // 로그인된 계정과 해당 예약이 있는 상점 주인이 동일한지 확인
     private void checkIfReservationStoreOwner(Account account, Reservation reservation) {
         if (reservation.getStore().getAccount().getId() != account.getId()) {
             throw new CustomException(ErrorCode.RESERVATION_STORE_OWNER_UNMATCH);

@@ -22,10 +22,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
-                        .requestMatchers("/store/*").hasRole("OWNER")
+                        .requestMatchers("/store/*", "/store/reservation/*").hasRole("OWNER")
                         .requestMatchers("/user/*", "/user/reserve/*").hasRole("USER")
                         .requestMatchers("/account/*").authenticated()
-                        .requestMatchers("/signup", "/signin", "/search", "/kiosk/*").permitAll())
+                        .requestMatchers("/signup", "/signin", "/search", "/search/*/*", "/kiosk/*").permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
